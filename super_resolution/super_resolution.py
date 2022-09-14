@@ -26,6 +26,7 @@ PATH_MODEL_8X_WEIGHTS = f"{PATH_ROOT}/0.3.1/weights.h5"
 PATH_MODEL_8X_DENOISED_JS = f"{PATH_ROOT}/0.3.2/js.json"
 PATH_MODEL_8X_DENOISED_WEIGHTS = f"{PATH_ROOT}/0.3.2/weights.h5"
 
+
 # download model files from github release
 def download_remote_model(model_name, model_url):
     user_model_path = os.path.join(
@@ -48,42 +49,35 @@ def download_remote_model(model_name, model_url):
     return local_model_path
 
 
-def download_4x_model():
-    model_name = "super_resolution_4x"
-    download_remote_model(model_name, PATH_MODEL_4X_JS)
-    download_remote_model(model_name, PATH_MODEL_4X_WEIGHTS)
+def download_model(model_name, js_path, weights_path):
+    download_remote_model(model_name, js_path)
+    download_remote_model(model_name, weights_path)
     return os.path.join(
         os.path.expanduser("~"),
         ".deepoffice",
         "super_resolution",
         "model",
         model_name,
+    )
+
+
+def download_4x_model():
+    return download_model(
+        "super_resolution_4x", PATH_MODEL_4X_JS, PATH_MODEL_4X_WEIGHTS
     )
 
 
 def download_8x_model():
-    model_name = "super_resolution_8x"
-    download_remote_model(model_name, PATH_MODEL_8X_JS)
-    download_remote_model(model_name, PATH_MODEL_8X_WEIGHTS)
-    return os.path.join(
-        os.path.expanduser("~"),
-        ".deepoffice",
-        "super_resolution",
-        "model",
-        model_name,
+    return download_model(
+        "super_resolution_8x", PATH_MODEL_8X_JS, PATH_MODEL_8X_WEIGHTS
     )
 
 
 def download_denoised_8x_model():
-    model_name = "denoised_super_resolution_8x"
-    download_remote_model(model_name, PATH_MODEL_8X_DENOISED_JS)
-    download_remote_model(model_name, PATH_MODEL_8X_DENOISED_WEIGHTS)
-    return os.path.join(
-        os.path.expanduser("~"),
-        ".deepoffice",
-        "super_resolution",
-        "model",
-        model_name,
+    return download_model(
+        "denoised_super_resolution_8x",
+        PATH_MODEL_8X_DENOISED_JS,
+        PATH_MODEL_8X_DENOISED_WEIGHTS,
     )
 
 
@@ -273,15 +267,10 @@ def clean_input(image):
 cartoon_model = None
 
 
-def cartoon_upsampling_4x(
-    input_image, output_4x_high_resolution_image_path=None
-):
-    # read low resolution image
-    # im = imageio.imread( input_low_resolution_image_path )
-    im = clean_input(im)
+def cartoon_upsampling_4x(input_image):
+    im = clean_input(input_image)
 
     # preparing input for the neural network
-    row, col, _ = im.shape
     im = np.asarray(im, dtype="float32")
     im = im / 127.5 - 1.0
     im = im.reshape((1,) + im.shape)
@@ -289,7 +278,6 @@ def cartoon_upsampling_4x(
     # prepare neural network
     global cartoon_model
     if cartoon_model is None:
-        script_folder = os.path.dirname(os.path.realpath(__file__))
         model_path = download_4x_model()
         cartoon_model = read_model(model_path)
 
@@ -300,25 +288,14 @@ def cartoon_upsampling_4x(
 
     return ans
 
-    # # save high resolution image
-    # if output_4x_high_resolution_image_path is not None:
-    #     imageio.imwrite( output_4x_high_resolution_image_path, ans )
-
-    # return high resolution image
-    return ans
-
 
 cartoon_model_8x = None
 
 
 def cartoon_upsampling_8x(input_image: np.array) -> np.array:
-    # read low resolution image
-    # im = imageio.imread(input_img)
-    im = input_image
-    im = clean_input(im)
+    im = clean_input(input_image)
 
     # preparing input for the neural network
-    row, col, _ = im.shape
     im = np.asarray(im, dtype="float32")
     im = im / 127.5 - 1.0
     im = im.reshape((1,) + im.shape)
@@ -326,9 +303,6 @@ def cartoon_upsampling_8x(input_image: np.array) -> np.array:
     # prepare neural network
     global cartoon_model_8x
     if cartoon_model_8x is None:
-        # script_folder = os.path.dirname(os.path.realpath(__file__))
-        # model_path = os.path.join(script_folder, 'resources', 'cartoon_model_8x' )
-        # model_path = download_8x_model()
         model_path = download_denoised_8x_model()
         cartoon_model_8x = read_model(model_path)
 
@@ -336,10 +310,6 @@ def cartoon_upsampling_8x(input_image: np.array) -> np.array:
     ans = cartoon_model_8x.predict(im, batch_size=1)
     ans = ans * 0.5 + 0.5
     ans = np.asarray(np.squeeze(ans) * 255, dtype="uint8")
-
-    # save high resolution image
-    # if output_8x_high_resolution_image_path is not None:
-    #     imageio.imwrite( output_8x_high_resolution_image_path, ans )
 
     # return high resolution image
     return ans
